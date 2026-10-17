@@ -1,0 +1,62 @@
+# =====================================================================
+# TRUST-MANET scenario matrix
+# =====================================================================
+# Two kinds of factor:
+#   * sim_factors  -> drive distinct ns-3 runs (expensive)
+#   * post_factors -> applied in Python on top of each ns-3 run, with NO
+#                     re-simulation (corrupt-reporter / bad-mouthing noise is
+#                     generated during feature building, so one simulation is
+#                     reused for every corrupt_reporter_frac).
+#
+# Attack + compromised_frac are bundled so we don't waste runs on redundant
+# combinations (clean implies 0% compromised; blackhole/grayhole at 0% would
+# just be clean).
+# =====================================================================
+
+full:
+  sim_factors:
+    n_nodes: [25, 50, 100]
+    speed:   [0, 5, 15]            # m/s (0 = static)
+    attack:
+      - {attack_type: clean,     compromised_frac: 0.00}
+      - {attack_type: blackhole, compromised_frac: 0.10}
+      - {attack_type: blackhole, compromised_frac: 0.20}
+      - {attack_type: grayhole,  compromised_frac: 0.10}
+      - {attack_type: grayhole,  compromised_frac: 0.20}
+  seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  post_factors:
+    corrupt_reporter_frac: [0.00, 0.25, 0.40]
+  # -> 3 x 3 x 5 x 10 = 450 ns-3 runs; x3 corrupt fracs in post = 1350 logical scenarios.
+
+# A predeclared fractional-factorial screening set for a fast first pass /
+# pipeline validation (36 ns-3 runs).
+screening:
+  sim_factors:
+    n_nodes: [25, 50]
+    speed:   [0, 15]
+    attack:
+      - {attack_type: clean,     compromised_frac: 0.00}
+      - {attack_type: blackhole, compromised_frac: 0.20}
+      - {attack_type: grayhole,  compromised_frac: 0.20}
+  seeds: [1, 2, 3]
+  post_factors:
+    corrupt_reporter_frac: [0.00, 0.40]
+  # -> 2 x 2 x 3 x 3 = 36 ns-3 runs.
+
+# Fixed ns-3 parameters (shared by both matrices).
+fixed:
+  sim_time: 200          # seconds
+  window_sec: 5          # measurement window
+  attack_start: 20       # attacks begin after routes have formed
+  app_start: 2
+  range_m: 120           # observation / 1-hop adjacency range
+  grayhole_drop_prob: 0.5
+  n_flows_per_25_nodes: 15     # scaled linearly with node count
+  density_m2_per_node: 30000   # area = n_nodes * this; side = sqrt(area)
+
+# Report / observation model (used only in build_dataset.py).
+report_model:
+  observation_sigma: 0.08      # gaussian noise on a watchdog's forward-ratio estimate
+  min_transit_for_obs: 3       # min transit packets for a usable observation in a window
+  badmouth_risk_min: 0.70      # corrupt reporter inflates benign target's risk to >= this
+  ballotstuff_risk_max: 0.30   # corrupt reporter deflates malicious target's risk to <= this
